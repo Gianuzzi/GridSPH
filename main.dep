@@ -1,0 +1,14 @@
+# This file is generated automatically. DO NOT EDIT!
+
+main :  \
+	box.o \
+	kern.o \
+	main.o
+
+box.o :  \
+	kern.o
+
+kern.o : 
+
+main.o :  \
+	box.o
