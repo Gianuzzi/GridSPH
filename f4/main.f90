@@ -3,31 +3,31 @@ program main
     implicit none
     interface
         subroutine write_matrix (a)
-            real*8, dimension(:,:) :: a
+            real*4, dimension(:,:) :: a
         end subroutine write_matrix
         subroutine write_arr_int (a)
             integer*4, dimension(:) :: a
         end subroutine write_arr_int
         subroutine read_file(file_name, arr)
             character(LEN=*), intent(in) :: file_name
-            real*8, dimension(:), allocatable, intent(out) :: arr
+            real*4, dimension(:), allocatable, intent(out) :: arr
         end subroutine read_file
     end interface
     ! Grid
     integer*4, parameter :: ngrid = 256, ngx=128, ngy=64, ngz=256
-    real*8, parameter :: side = 0.38, sx=0.3, sy=0.4, sz=0.2
-    real*8, parameter, dimension(3) :: center = (/0.001,-0.001,0./)    
-    real*8, dimension(:,:), allocatable :: grid
+    real*4, parameter :: side = 0.38, sx=0.3, sy=0.4, sz=0.2
+    real*4, parameter, dimension(3) :: center = (/0.001,-0.001,0./)    
+    real*4, dimension(:,:), allocatable :: grid
     
     ! Result
-    real*8, dimension(:,:), allocatable :: boxed_extra
+    real*4, dimension(:,:), allocatable :: boxed_extra
     
     ! Particles
     integer*4 :: npart, nextra, ninten, nexten, nvel
-    real*8, dimension(:), allocatable :: arr_1D
-    real*8, dimension(:,:), allocatable :: pos, vel
-    real*8, dimension(:), allocatable :: mass, hsml, dens, pot, ene
-    real*8, dimension(:,:), allocatable :: extra!, exten, inten
+    real*4, dimension(:), allocatable :: arr_1D
+    real*4, dimension(:,:), allocatable :: pos, vel
+    real*4, dimension(:), allocatable :: mass, hsml, dens, pot, ene
+    real*4, dimension(:,:), allocatable :: extra!, exten, inten
     
     ! Dummy
     integer*4 :: i
@@ -115,21 +115,21 @@ end program main
 
 subroutine read_file(file_name, arr)
     character(LEN=*), intent(in) :: file_name
-    real*8, dimension(:), allocatable, intent(out) :: arr
+    real*4, dimension(:), allocatable, intent(out) :: arr
     logical :: existe
     integer*4 :: file_size, n_bytes
-    real*8 :: this_byte
+    real*4 :: this_byte
     INQUIRE(file=file_name, size=file_size, exist=existe)
-    n_bytes = file_size / 8
+    n_bytes = file_size / 4
     if (.not. existe) then
         PRINT*, "El archivo", file_name, "no existe."
         call EXIT(1)
     end if
     allocate(arr(n_bytes))
     OPEN(1, file=file_name, status="old", form="unformatted", access="stream")
-    !! reading byte positions: 1 - 8, 8+1 - 8*2, ...
+    !! reading byte positions: 1 - 4, 4+1 - 4*2, ...
     do i = 1, n_bytes
-        READ(1, pos=(i*8 - 7)) this_byte
+        READ(1, pos=(i*4 - 3)) this_byte
         arr(i) = this_byte
     enddo   
     CLOSE(1)
@@ -145,7 +145,7 @@ subroutine write_arr_int(a)
 end subroutine write_arr_int
 
 subroutine write_matrix(a)
-   real*8, dimension(:,:) :: a
+   real*4, dimension(:,:) :: a
    WRITE(*,*)
    
    do i = LBOUND(a,1), ubound(a,1)

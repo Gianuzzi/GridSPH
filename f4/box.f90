@@ -58,11 +58,11 @@ module box
             subroutine make_grid (nx, ny, nz, sx, sy, sz, center, grid)
                 implicit none
                 integer*4, intent(in) :: nx, ny, nz
-                real*8, intent(in) :: sx, sy, sz
-                real*8, dimension(3), intent(in) :: center
-                real*8, dimension(:,:), allocatable, intent(out) :: grid
+                real*4, intent(in) :: sx, sy, sz
+                real*4, dimension(3), intent(in) :: center
+                real*4, dimension(:,:), allocatable, intent(out) :: grid
                 integer*4 :: i, j, k, m
-                real*8 :: rx, ry , rz
+                real*4 :: rx, ry , rz
                 
                 rx = sx / (nx * 1.)
                 ry = sy / (ny * 1.)
@@ -85,33 +85,33 @@ module box
                     
             subroutine grid_extra (pos, mass, dens, hsml, extra, ninten, ngx, ngy, ngz, sx, sy, sz, center, boxed_extra)
                 implicit none
-                real*8, dimension(:), intent(in) :: mass
-                real*8, dimension(SIZE(mass)), intent(in) :: dens, hsml
-                real*8, dimension(SIZE(mass),3), intent(in) :: pos
-                real*8, dimension(:, :), intent(in) :: extra ! (npart, n_extra)
-                real*8, intent(in) :: sx, sy, sz
+                real*4, dimension(:), intent(in) :: mass
+                real*4, dimension(SIZE(mass)), intent(in) :: dens, hsml
+                real*4, dimension(SIZE(mass),3), intent(in) :: pos
+                real*4, dimension(:, :), intent(in) :: extra ! (npart, n_extra)
+                real*4, intent(in) :: sx, sy, sz
                 integer*4, intent(in) :: ngx, ngy, ngz, ninten
-                real*8, dimension(3), intent(in) :: center
-                real*8, dimension(:,:), allocatable, intent(out) :: boxed_extra
+                real*4, dimension(3), intent(in) :: center
+                real*4, dimension(:,:), allocatable, intent(out) :: boxed_extra
                 
-                real*8, dimension(SIZE(mass),3) :: centred, pos_norm
+                real*4, dimension(SIZE(mass),3) :: centred, pos_norm
                 integer*4, dimension(SIZE(mass),3) :: box_ijk
                 integer*4, dimension(SIZE(mass)) :: box_id
                 logical, dimension(SIZE(mass)) :: in_grid, touch_grid
 
-                real*8, dimension(3) :: h, s, s2, h2
-                real*8 :: start_time, time_1, time_2
+                real*4, dimension(3) :: h, s, s2, h2
+                real*4 :: start_time, time_1, time_2
                 integer*4, dimension(3) :: ng   
-                real*8 :: hx, hy, hz, sx2, sy2, sz2, d2prev, d2next, d, W, vol_k
+                real*4 :: hx, hy, hz, sx2, sy2, sz2, d2prev, d2next, d, W, vol_k
                 integer*4 :: i, j, n_useful, ngrid3, n_extra, nexten
                 integer*4 :: bi, bj, bk, bin
 
-                real*8, allocatable, dimension(:) :: mass_u, dens_u, hsml_u, vol_u
-                real*8, allocatable, dimension(:,:) :: pos_norm_u
+                real*4, allocatable, dimension(:) :: mass_u, dens_u, hsml_u, vol_u
+                real*4, allocatable, dimension(:,:) :: pos_norm_u
                 integer*4, allocatable, dimension(:,:) :: box_ijk_u, first, last
-                real*8, allocatable, dimension(:) :: Sj, Ik
-                real*8, allocatable, dimension(:,:) :: Aj ! este va a ser (n_extra, npart)
-                real*8, allocatable, dimension(:,:) :: Ak ! este va a ser (n_extra, ng³)
+                real*4, allocatable, dimension(:) :: Sj, Ik
+                real*4, allocatable, dimension(:,:) :: Aj ! este va a ser (n_extra, npart)
+                real*4, allocatable, dimension(:,:) :: Ak ! este va a ser (n_extra, ng³)
                 
                 ! Checkeamos que "extra" esté bien
                 if (SIZE(extra, 1) .ne. SIZE(mass)) then
