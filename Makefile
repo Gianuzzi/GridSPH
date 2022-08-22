@@ -1,11 +1,13 @@
-C = gfortran -g
-MYFFLAGS = -ffinite-math-only -funsafe-math-optimizations -ffast-math -funroll-loops -fdefault-real-8
+FC = gfortran -g
+MYFFLAGS = -ffinite-math-only -funsafe-math-optimizations -ffast-math -funroll-loops -fdefault-real-8 -fopenmp
 FFLAGS = -Wall -Wextra -march=native -fcheck=all $(MYFFLAGS)
 MYLDFLAGS = -O3
 LDFLAGS = $(MYLDFLAGS)
 
 TARGETS = main
+FIXED_SOURCES = $(wildcard *.f)
 FREE_SOURCES = $(wildcard *.f90)
+FIXED_OBJECTS = $(patsubst %.f,%.o,${FIXED_SOURCES})
 FREE_OBJECTS = $(patsubst %.f90,%.o,${FREE_SOURCES})
 
 MAKEDEP = deps
@@ -13,6 +15,9 @@ DEP_FILE_NAME = main.dep
 DEP_FILE = $(DEP_FILE_NAME)
 
 all: $(TARGETS) $(DEP_FILE_NAME)
+
+${FIXED_OBJECTS} : %.o : %.f
+	$(FC) $(FFLAGS) -o $@ -c $< $(LDFLAGS)
 
 ${FREE_OBJECTS} : %.o : %.f90
 	$(FC) $(FFLAGS) -o $@ -c $< $(DEP_FILE_NAME) $(LDFLAGS)
@@ -25,7 +30,7 @@ main: ${FIXED_OBJECTS}
 
 deps:
 	@echo "Creating dependencies file: $(DEP_FILE_NAME)"
-	fortdepend -w -o $(DEP_FILE_NAME) -f *.f90
+	fortdepend -w -o $(DEP_FILE_NAME) -f *.f90 -i omp_lib
 
 install: # Install fortdepend
 	@echo "Installing fortdepend"
@@ -52,6 +57,6 @@ endif
 ## It can be installed via pip: 
 ### $ python -m pip install fortdepend
 ${DEP_FILE}:
-	fortdepend -w -o $(DEP_FILE_NAME) -f *.f90
+	fortdepend -w -o $(DEP_FILE_NAME) -f *.f90 -i omp_lib
 
 .PHONY: clean all deps install

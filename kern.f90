@@ -15,10 +15,12 @@ module kern
         real*8 function spline_q(q, h) result (w)
             implicit none
             real*8, intent(in) :: q, h
+            real*8 :: aux
             if (q <= 1) then
                 w = 1 - 1.5 * q * q * (1 - q * 0.5)
             else if ((1 < q) .and. (q <= 2)) then
-                w = 0.25 * (2 - q)**3
+                aux = (2 - q)
+                w = 0.25 * aux * aux * aux
             else
                 w = 0
             end if
@@ -36,5 +38,5 @@ module kern
             real*8, intent(in) :: x, y, z, h
             w = spline_q(get_q(x, y, z, h), h)
         end function spline_xyz
-            
+    
 end module kern
