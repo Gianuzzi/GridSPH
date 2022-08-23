@@ -4,7 +4,7 @@ program main
     implicit none
     interface
         subroutine write_matrix (a)
-            real*4, dimension(:,:) :: a
+            real, dimension(:,:) :: a
         end subroutine write_matrix
         subroutine write_arr_int (a)
             integer*4, dimension(:) :: a
@@ -12,63 +12,63 @@ program main
         subroutine read_file(file_name, nbytes, arr)
             character(LEN=*), intent(in) :: file_name
             integer*4, intent(in) :: nbytes
-            real*4, dimension(:), allocatable, intent(out) :: arr
+            real, dimension(:), allocatable, intent(out) :: arr
         end subroutine read_file
     end interface
 
     ! Grid
     integer*4, parameter :: ngrid = 128, ngx=256, ngy=256, ngz=256
-    real*4, parameter :: side = 0.2165, sx=0.5, sy=0.5, sz=0.5
-    real*4, parameter, dimension(3) :: center = (/0.,0.,0./)
-    real*4, dimension(:,:), allocatable :: grid
+    real, parameter :: side = 0.2165, sx=0.5, sy=0.5, sz=0.5
+    real, parameter, dimension(3) :: center = (/0.,0.,0./)
+    real, dimension(:,:), allocatable :: grid
 
     ! Result
-    real*4, dimension(:,:), allocatable :: boxed_extra
+    real, dimension(:,:), allocatable :: boxed_extra
 
     ! Particles
     integer*4 :: npart, nextra, ninten, nexten, nvel
-    real*4, dimension(:), allocatable :: arr_1D_p, arr_1D_v
-    real*4, dimension(:,:), allocatable :: pos, vel
-    real*4, dimension(:), allocatable :: mass, hsml, dens, pot, ene
-    real*4, dimension(:,:), allocatable :: extra!, exten, inten
-    integer*4 :: nbytes = 8 ! Los datos están en real*8 o real*4 ?
+    real, dimension(:), allocatable :: arr_1D_p, arr_1D_v
+    real, dimension(:,:), allocatable :: pos, vel
+    real, dimension(:), allocatable :: mass, hsml, dens, pot, ene
+    real, dimension(:,:), allocatable :: extra!, exten, inten
+    integer*4, parameter :: nbytes_in = 4 ! Los datos están en real*8 o real*4 ?
 
     ! Dummy
     integer*4 :: i
     real*8 :: time, time2
 
     ! Parallel
-    integer*4 :: nthreads = 3
+    integer*4 :: nthreads = 4
     nthreads = MAX(MIN(nthreads, OMP_GET_MAX_THREADS()-2),1)
     call OMP_SET_NUM_THREADS(nthreads)
 
     PRINT '("Trabajando con ",I2, " threads.")', OMP_GET_MAX_THREADS()
-    PRINT '("Las operaciones se realizarán con flotantes de ",I2, " bytes.")', SIZEOF(side)
-    PRINT '("Leyendo archivos se leerán en ",I2, " bytes.")', nbytes
-    !$OMP PARALLEL IF(nthreads<=3) DEFAULT(PRIVATE) &
-    !$OMP SHARED(mass,dens,hsml,pot,ene,nvel,vel,pos,npart,arr_1D_p,arr_1D_v,nbytes)
+    PRINT '("Las operaciones (y archivos de salida) serán en ",I1, " bytes.")', SIZEOF(side)
+    PRINT '("Leyendo archivos se leerán en ",I1, " bytes.")', nbytes_in
+    !$OMP PARALLEL IF((nthreads<=4).AND.(1<nthreads)) DEFAULT(PRIVATE) &
+    !$OMP SHARED(mass,dens,hsml,pot,ene,nvel,vel,pos,npart,arr_1D_p,arr_1D_v)
     !$OMP SECTIONS 
     !$OMP SECTION
         PRINT '(3X,"Leyendo posiciones...")'
-        call read_file("pos_d", nbytes, arr_1D_p)
+        call read_file("pos_d", nbytes_in, arr_1D_p)
     !$OMP SECTION
         PRINT '(3X,"Leyendo masas...")'
-        call read_file("mass_d", nbytes, mass)
+        call read_file("mass_d", nbytes_in, mass)
     !$OMP SECTION
         PRINT '(3X,"Leyendo densidades...")'
-        call read_file("dens_d", nbytes, dens)
+        call read_file("dens_d", nbytes_in, dens)
     !$OMP SECTION
         PRINT '(3X,"Leyendo hsmls...")'
-        call read_file("hsml_d", nbytes, hsml)
+        call read_file("hsml_d", nbytes_in, hsml)
     !$OMP SECTION
         PRINT '(3X,"Leyendo potenciales...")'
-        call read_file("pot_d", nbytes, pot)
+        call read_file("pot_d", nbytes_in, pot)
     !$OMP SECTION
         PRINT '(3X,"Leyendo energías internas...")'
-        call read_file("ene_d", nbytes, ene)
+        call read_file("ene_d", nbytes_in, ene)
     !$OMP SECTION
         PRINT '(3X,"Leyendo velocidades...")'
-        call read_file("vel_d", nbytes, arr_1D_v)
+        call read_file("vel_d", nbytes_in, arr_1D_v)
     !$OMP END SECTIONS
     !$OMP END PARALLEL
     !! Parámetros...
@@ -145,7 +145,7 @@ subroutine read_file(file_name, nbytes, arr)
     use omp_lib
     character(LEN=*), intent(in) :: file_name
     integer*4, intent(in) :: nbytes
-    real*4, dimension(:), allocatable, intent(out) :: arr
+    real, dimension(:), allocatable, intent(out) :: arr
     logical :: existe
     integer*4 :: file_size, n_bytes, i, thread
     real*4 :: this_byte_4
@@ -164,12 +164,12 @@ subroutine read_file(file_name, nbytes, arr)
     if (nbytes == 8) then
         do i = 1, n_bytes
             READ(thread, pos=(i*nbytes - nbytes + 1)) this_byte_8
-            arr(i) = REAL(this_byte_8,SIZEOF(this_byte_8))
+            arr(i) = REAL(this_byte_8, SIZEOF(arr(i)))
         enddo
     else
         do i = 1, n_bytes
             READ(thread, pos=(i*nbytes - nbytes + 1)) this_byte_4
-            arr(i) = REAL(this_byte_4,SIZEOF(this_byte_8))
+            arr(i) = REAL(this_byte_4, SIZEOF(arr(i)))
         enddo
     end if
     CLOSE(thread)
@@ -184,7 +184,7 @@ subroutine write_arr_int(a)
 end subroutine write_arr_int
 
 subroutine write_matrix(a)
-   real*4, dimension(:,:) :: a
+   real, dimension(:,:) :: a
    WRITE(*,*)
    do i = LBOUND(a,1), ubound(a,1)
       WRITE(*,*) (a(i,j), j = LBOUND(a,2), UBOUND(a,2))

@@ -59,11 +59,11 @@ module box
         subroutine make_grid (nx, ny, nz, sx, sy, sz, center, grid)
             implicit none
             integer*4, intent(in) :: nx, ny, nz
-            real*4, intent(in) :: sx, sy, sz
-            real*4, dimension(3), intent(in) :: center
-            real*4, dimension(:,:), allocatable, intent(out) :: grid
+            real, intent(in) :: sx, sy, sz
+            real, dimension(3), intent(in) :: center
+            real, dimension(:,:), allocatable, intent(out) :: grid
             integer*4 :: i, j, k, m
-            real*4 :: rx, ry , rz
+            real :: rx, ry , rz
             
             rx = sx / (nx * 1.)
             ry = sy / (ny * 1.)
@@ -91,33 +91,33 @@ module box
                 
         subroutine grid_extra (pos, mass, dens, hsml, extra, ninten, ngx, ngy, ngz, sx, sy, sz, center, boxed_extra)
             implicit none
-            real*4, dimension(:), intent(in) :: mass
-            real*4, dimension(SIZE(mass)), intent(in) :: dens, hsml
-            real*4, dimension(SIZE(mass),3), intent(in) :: pos
-            real*4, dimension(:, :), intent(in) :: extra ! (npart, n_extra)
-            real*4, intent(in) :: sx, sy, sz
+            real, dimension(:), intent(in) :: mass
+            real, dimension(SIZE(mass)), intent(in) :: dens, hsml
+            real, dimension(SIZE(mass),3), intent(in) :: pos
+            real, dimension(:, :), intent(in) :: extra ! (npart, n_extra)
+            real, intent(in) :: sx, sy, sz
             integer*4, intent(in) :: ngx, ngy, ngz, ninten
-            real*4, dimension(3), intent(in) :: center
-            real*4, dimension(:,:), allocatable, intent(out) :: boxed_extra
+            real, dimension(3), intent(in) :: center
+            real, dimension(:,:), allocatable, intent(out) :: boxed_extra
             
-            real*4, dimension(SIZE(mass),3) :: centred, pos_norm
+            real, dimension(SIZE(mass),3) :: centred, pos_norm
             integer*4, dimension(SIZE(mass),3) :: box_ijk
             integer*4, dimension(SIZE(mass)) :: box_id
             logical, dimension(SIZE(mass)) :: in_grid, touch_grid
 
-            real*4, dimension(3) :: h, s, s2, h2
+            real, dimension(3) :: h, s, s2, h2
             real*8 :: start_time, time_1, time_2
             integer*4, dimension(3) :: ng
-            real*4 :: hx, hy, hz, sx2, sy2, sz2, d2prev, d2next, d, W, vol_k, dx, dy, dz
+            real :: hx, hy, hz, sx2, sy2, sz2, d2prev, d2next, d, W, vol_k, dx2, dy2, dz2
             integer*4 :: i, j, n_useful, ngrid3, n_extra, nexten
             integer*4 :: bi, bj, bk, bin
             integer*4, allocatable, dimension(:) :: box_id_u
-            real*4, allocatable, dimension(:) :: mass_u, dens_u, hsml_u, vol_u
-            real*4, allocatable, dimension(:,:) :: pos_norm_u
+            real, allocatable, dimension(:) :: mass_u, dens_u, hsml_u, vol_u
+            real, allocatable, dimension(:,:) :: pos_norm_u
             integer*4, allocatable, dimension(:,:) :: box_ijk_u, first, last
-            real*4, allocatable, dimension(:) :: Sj, Ik
-            real*4, allocatable, dimension(:,:) :: Aj,Aj_Sj ! este va a ser (n_extra, nuseful)
-            real*4, allocatable, dimension(:,:) :: Ak ! este va a ser (n_extra, ng³)
+            real, allocatable, dimension(:) :: Sj, Ik
+            real, allocatable, dimension(:,:) :: Aj,Aj_Sj ! este va a ser (n_extra, nuseful)
+            real, allocatable, dimension(:,:) :: Ak ! este va a ser (n_extra, ng³)
 
             ! integer*4, allocatable, dimension(:) :: npart_per_cell, acum_part !(ng³)
             ! integer*4, allocatable, dimension(:) :: id_part_in_cell ! (nuseful)
@@ -311,17 +311,20 @@ module box
             PRINT*, "Calculando pesos Sj..."
             ! Calculamos los pesos Sj de cada partícula
             Sj = 0.
-            !$OMP PARALLEL PRIVATE (i,bk,bj,bi,dx,dy,dz,d,W)&
+            !$OMP PARALLEL PRIVATE (i,bk,bj,bi,dx2,dy2,dz2,d,W)&
             !$OMP SHARED (first,last,pos_norm_u,hsml_u,Sj,hx,hy,hz)
             !$OMP DO SCHEDULE (STATIC)
                 do i = 1, n_useful
                     do bk = first(i,3), last(i,3) ! del primero al último
-                        dz = (pos_norm_u(i,3) - bk - 0.5) * hz
+                        dz2 = (pos_norm_u(i,3) - bk - 0.5) * hz
+                        dz2 = dz2 * dz2
                         do bj = first(i,2), last(i,2) ! del primero al último
-                            dy = (pos_norm_u(i,2) - bj - 0.5) * hy
+                            dy2 = (pos_norm_u(i,2) - bj - 0.5) * hy
+                            dy2 = dy2 * dy2
                             do bi = first(i,1), last(i,1) ! del primero al último
-                                dx = (pos_norm_u(i,1) - bi - 0.5) * hx
-                                d = SQRT(dx * dx + dy * dy + dz * dz) ! desde su posición al centro del otro box
+                                dx2 = (pos_norm_u(i,1) - bi - 0.5) * hx
+                                dx2 = dx2 * dx2
+                                d = SQRT(dx2 + dy2 + dz2) ! desde su posición al centro del otro box
                                 Sj(i) = Sj(i) + spline_d(d, hsml_u(i)) ! sumamos contribución
                             end do
                         end do
@@ -366,19 +369,22 @@ module box
             Ak = 0.
             Ik = 0.
             
-            !$OMP PARALLEL PRIVATE (i,bk,bj,bi,bin,dx,dy,dz,d,W)&
+            !$OMP PARALLEL PRIVATE (i,bk,bj,bi,bin,dx2,dy2,dz2,d,W)&
             !$OMP SHARED (box_id_u,Sj,first,last,pos_norm_u,hsml_u,Ak,Ik,Aj,Aj_Sj,vol_u,ngx,ngy,ngz,h2)
             !$OMP DO SCHEDULE (STATIC)
                 do i = 1, n_useful
                     if (box_id_u(i) >= 0) then
                         if (Sj(i) > 0.) then ! en este caso debemos recorrer los boxes amigos
                             do bk = first(i,3), last(i,3) ! del primero al último
-                                dz = (pos_norm_u(i,3) - bk - 0.5) * hz
+                                dz2 = (pos_norm_u(i,3) - bk - 0.5) * hz
+                                dz2 = dz2 * dz2
                                 do bj = first(i,2), last(i,2) ! del primero al último
-                                    dy = (pos_norm_u(i,2) - bj - 0.5) * hy
+                                    dy2 = (pos_norm_u(i,2) - bj - 0.5) * hy
+                                    dy2 = dy2 * dy2
                                     do bi = first(i,1), last(i,1) ! del primero al último
-                                        dx = (pos_norm_u(i,1) - bi - 0.5) * hx
-                                        d = SQRT(dx * dx + dy * dy + dz * dz) ! desde su posición al centro del otro box
+                                        dx2 = (pos_norm_u(i,1) - bi - 0.5) * hx
+                                        dx2 = dx2 * dx2
+                                        d = SQRT(dx2 + dy2 + dz2) ! desde su posición al centro del otro box
                                         bin = ijk2boxid(bi, bj, bk, ngx, ngy, ngz) + 1
                                         W = spline_d(d, hsml_u(i))
                                         Ak(:,bin) = Ak(:,bin) + (W * Aj_Sj(:,i))
@@ -396,12 +402,15 @@ module box
                     else
                         if (Sj(i) > 0.) then ! en este caso debemos recorrer los boxes amigos
                             do bk = first(i,3), last(i,3) ! del primero al último
-                                dz = (pos_norm_u(i,3) - bk - 0.5) * hz
+                                dz2 = (pos_norm_u(i,3) - bk - 0.5) * hz
+                                dz2 = dz2 * dz2
                                 do bj = first(i,2), last(i,2) ! del primero al último
-                                    dy = (pos_norm_u(i,2) - bj - 0.5) * hy
+                                    dy2 = (pos_norm_u(i,2) - bj - 0.5) * hy
+                                    dy2 = dy2 * dy2
                                     do bi = first(i,1), last(i,1) ! del primero al último
-                                        dx = (pos_norm_u(i,1) - bi - 0.5) * hx
-                                        d = SQRT(dx * dx + dy * dy + dz * dz) ! desde su posición al centro del otro box
+                                        dx2 = (pos_norm_u(i,1) - bi - 0.5) * hx
+                                        dx2 = dx2 * dx2
+                                        d = SQRT(dx2 + dy2 + dz2) ! desde su posición al centro del otro box
                                         bin = ijk2boxid(bi, bj, bk, ngx, ngy, ngz) + 1
                                         W = spline_d(d, hsml_u(i))
                                         Ak(:,bin) = Ak(:,bin) + (W * Aj_Sj(:,i))
