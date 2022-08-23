@@ -4,72 +4,75 @@ program main
     implicit none
     interface
         subroutine write_matrix (a)
-            real*8, dimension(:,:) :: a
+            real*4, dimension(:,:) :: a
         end subroutine write_matrix
         subroutine write_arr_int (a)
             integer*4, dimension(:) :: a
         end subroutine write_arr_int
-        subroutine read_file(file_name, arr)
+        subroutine read_file(file_name, nbytes, arr)
             character(LEN=*), intent(in) :: file_name
-            real*8, dimension(:), allocatable, intent(out) :: arr
+            integer*4, intent(in) :: nbytes
+            real*4, dimension(:), allocatable, intent(out) :: arr
         end subroutine read_file
     end interface
 
     ! Grid
-    integer*4, parameter :: ngrid = 128, ngx=128, ngy=128, ngz=128
-    real*8, parameter :: side = 0.2165, sx=0.5, sy=0.5, sz=0.5
-    real*8, parameter, dimension(3) :: center = (/0.,0.,0./)    
-    real*8, dimension(:,:), allocatable :: grid
-    
+    integer*4, parameter :: ngrid = 128, ngx=256, ngy=256, ngz=256
+    real*4, parameter :: side = 0.2165, sx=0.5, sy=0.5, sz=0.5
+    real*4, parameter, dimension(3) :: center = (/0.,0.,0./)
+    real*4, dimension(:,:), allocatable :: grid
+
     ! Result
-    real*8, dimension(:,:), allocatable :: boxed_extra
-    
+    real*4, dimension(:,:), allocatable :: boxed_extra
+
     ! Particles
     integer*4 :: npart, nextra, ninten, nexten, nvel
-    real*8, dimension(:), allocatable :: arr_1D_p, arr_1D_v
-    real*8, dimension(:,:), allocatable :: pos, vel
-    real*8, dimension(:), allocatable :: mass, hsml, dens, pot, ene
-    real*8, dimension(:,:), allocatable :: extra!, exten, inten
-    
+    real*4, dimension(:), allocatable :: arr_1D_p, arr_1D_v
+    real*4, dimension(:,:), allocatable :: pos, vel
+    real*4, dimension(:), allocatable :: mass, hsml, dens, pot, ene
+    real*4, dimension(:,:), allocatable :: extra!, exten, inten
+    integer*4 :: nbytes = 8 ! Los datos están en real*8 o real*4 ?
+
     ! Dummy
     integer*4 :: i
     real*8 :: time, time2
 
     ! Parallel
-    integer*4 :: nthreads = 4
+    integer*4 :: nthreads = 3
     nthreads = MAX(MIN(nthreads, OMP_GET_MAX_THREADS()-2),1)
     call OMP_SET_NUM_THREADS(nthreads)
-    
-    PRINT '("Trabajando con ",I2, " threads.")', OMP_GET_MAX_THREADS()
 
+    PRINT '("Trabajando con ",I2, " threads.")', OMP_GET_MAX_THREADS()
+    PRINT '("Las operaciones se realizarán con flotantes de ",I2, " bytes.")', SIZEOF(side)
+    PRINT '("Leyendo archivos se leerán en ",I2, " bytes.")', nbytes
     !$OMP PARALLEL IF(nthreads<=3) DEFAULT(PRIVATE) &
-    !$OMP SHARED(mass,dens,hsml,pot,ene,nvel,vel,pos,npart,arr_1D_p,arr_1D_v)
+    !$OMP SHARED(mass,dens,hsml,pot,ene,nvel,vel,pos,npart,arr_1D_p,arr_1D_v,nbytes)
     !$OMP SECTIONS 
     !$OMP SECTION
-        PRINT '("Leyendo posiciones...")'
-        call read_file("pos_d", arr_1D_p)
+        PRINT '(3X,"Leyendo posiciones...")'
+        call read_file("pos_d", nbytes, arr_1D_p)
     !$OMP SECTION
-        PRINT '("Leyendo masas...")'
-        call read_file("mass_d", mass)
+        PRINT '(3X,"Leyendo masas...")'
+        call read_file("mass_d", nbytes, mass)
     !$OMP SECTION
-        PRINT '("Leyendo densidades...")'
-        call read_file("dens_d", dens)
+        PRINT '(3X,"Leyendo densidades...")'
+        call read_file("dens_d", nbytes, dens)
     !$OMP SECTION
-        PRINT '("Leyendo hsmls...")'
-        call read_file("hsml_d", hsml)
+        PRINT '(3X,"Leyendo hsmls...")'
+        call read_file("hsml_d", nbytes, hsml)
     !$OMP SECTION
-        PRINT '("Leyendo potenciales...")'
-        call read_file("pot_d", pot)
+        PRINT '(3X,"Leyendo potenciales...")'
+        call read_file("pot_d", nbytes, pot)
     !$OMP SECTION
-        PRINT '("Leyendo energías internas...")'
-        call read_file("ene_d", ene)
+        PRINT '(3X,"Leyendo energías internas...")'
+        call read_file("ene_d", nbytes, ene)
     !$OMP SECTION
-        PRINT '("Leyendo velocidades...")'
-        call read_file("vel_d", arr_1D_v)
+        PRINT '(3X,"Leyendo velocidades...")'
+        call read_file("vel_d", nbytes, arr_1D_v)
     !$OMP END SECTIONS
     !$OMP END PARALLEL
     !! Parámetros...
-    PRINT '("Obteniendo parámetros...")'
+    PRINT '(2X,"Obteniendo parámetros...")'
     npart = SIZE(arr_1D_p) / 3
     allocate(pos(npart, 3))
     pos = RESHAPE(arr_1D_p, (/npart, 3/))
@@ -78,7 +81,7 @@ program main
     allocate(vel(npart,nvel))
     vel = RESHAPE(arr_1D_v, (/npart, nvel/))
     deallocate(arr_1D_v)
-    PRINT '(2X,"Listo.")'
+    PRINT '(1X,"Listo.")'
     PRINT*, ""
 
     ! Juntamos
@@ -115,10 +118,10 @@ program main
     WRITE(10) grid
     CLOSE(10)
     deallocate(grid)
-    PRINT '("Tiempo de generación y guardado: ",F8.4, " [s].")', OMP_GET_WTIME() - time
+    PRINT '(2X,"Tiempo de generación y guardado: ",F8.4, " [s].")', OMP_GET_WTIME() - time
     PRINT '(1X,"Listo.")'
     PRINT*, ""
-    
+
     PRINT '("Calculando...")'
     call grid_extra(pos, mass, dens, hsml, extra, ninten,&
                     & ngx, ngy, ngz, sx, sy, sz, center,&
@@ -138,15 +141,18 @@ program main
     PRINT '("Listo.")'
 end program main
 
-subroutine read_file(file_name, arr)
+subroutine read_file(file_name, nbytes, arr)
     use omp_lib
     character(LEN=*), intent(in) :: file_name
-    real*8, dimension(:), allocatable, intent(out) :: arr
+    integer*4, intent(in) :: nbytes
+    real*4, dimension(:), allocatable, intent(out) :: arr
     logical :: existe
     integer*4 :: file_size, n_bytes, i, thread
-    real*8 :: this_byte
+    real*4 :: this_byte_4
+    real*8 :: this_byte_8
+
     INQUIRE(file=file_name, size=file_size, exist=existe)
-    n_bytes = file_size / 8
+    n_bytes = file_size / nbytes
     if (.not. existe) then
         PRINT*, "El archivo", file_name, "no existe."
         call EXIT(1)
@@ -154,11 +160,18 @@ subroutine read_file(file_name, arr)
     allocate(arr(n_bytes))
     thread = OMP_GET_THREAD_NUM()
     OPEN(thread, file=file_name, status="old", form="unformatted", access="stream")
-    !! reading byte positions: 1 - 8, 8+1 - 8*2, ...
-    do i = 1, n_bytes
-        READ(thread, pos=(i*8 - 7)) this_byte
-        arr(i) = this_byte
-    enddo   
+    !! reading byte positions: 1 - nbytes, nbytes+1 - nbytes*2, ...
+    if (nbytes == 8) then
+        do i = 1, n_bytes
+            READ(thread, pos=(i*nbytes - nbytes + 1)) this_byte_8
+            arr(i) = REAL(this_byte_8,SIZEOF(this_byte_8))
+        enddo
+    else
+        do i = 1, n_bytes
+            READ(thread, pos=(i*nbytes - nbytes + 1)) this_byte_4
+            arr(i) = REAL(this_byte_4,SIZEOF(this_byte_8))
+        enddo
+    end if
     CLOSE(thread)
 end subroutine read_file
 
@@ -171,7 +184,7 @@ subroutine write_arr_int(a)
 end subroutine write_arr_int
 
 subroutine write_matrix(a)
-   real*8, dimension(:,:) :: a
+   real*4, dimension(:,:) :: a
    WRITE(*,*)
    do i = LBOUND(a,1), ubound(a,1)
       WRITE(*,*) (a(i,j), j = LBOUND(a,2), UBOUND(a,2))
